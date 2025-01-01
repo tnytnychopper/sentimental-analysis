@@ -38,6 +38,11 @@ This project is a Streamlit application that analyzes customer reviews using sen
 - `google-generativeai`
 
 ---
+### Requirments
+- `streamlit==1.18.0`
+- `transformers==4.27.4`
+- `pandas==1.5.3`
+- `google-generativeai==0.2.0`
 
 ## Installation
 
