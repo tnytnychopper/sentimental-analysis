@@ -1,0 +1,88 @@
+import streamlit as st
+from transformers import pipeline
+import pandas as pd
+import google.generativeai as genai
+
+# Configure Generative AI
+genai.configure(api_key="AIzaSyDsAgqeJOu5eK2Lk6iqj97csiBBPM7k98g")
+model = genai.GenerativeModel("gemini-1.5-flash")
+
+# Initialize sentiment analysis pipeline
+sentiment_analyzer = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
+
+def generate_detailed_insights(reviews_summary):
+    """Use generative AI to create detailed insights based on sentiment summary."""
+    prompt = (
+        f"Analyze these of reviews of a product and provide actionable insights, including trends, recommendations, "
+        f"and any areas of improvement:\n\n{reviews_summary}\n\n just summarise the review with whatever given"
+    )
+    response = model.generate_content(prompt)
+    return response.text
+
+# Streamlit app
+st.title("Advanced Sentiment Analysis App with AI-Powered Insights")
+st.write("Analyze reviews, gauge sentiment, and get detailed actionable insights.")
+
+# Input: List of reviews
+reviews = st.text_area(
+    "Enter reviews (one per line): Atleast 10 reviews are required for better insights",
+    height=200,
+    placeholder="Type or paste your reviews here...",
+)
+
+if st.button("Analyze Sentiment"):
+    if not reviews.strip():
+        st.warning("Please enter at least one review.")
+    else:
+        # Split reviews into a list
+        review_list = reviews.split("\n")
+        review_list = [review.strip() for review in review_list if review.strip()]
+
+        # Perform sentiment analysis
+        sentiment_results = [sentiment_analyzer(review)[0] for review in review_list]
+
+        # Prepare data for display
+        results_df = pd.DataFrame(
+            {
+                "Review": review_list,
+                "Sentiment": [result["label"] for result in sentiment_results],
+                "Confidence": [result["score"] for result in sentiment_results],
+            }
+        )
+
+        # Display results
+        st.subheader("Analysis Report")
+        st.write(results_df)
+
+        # Sentiment distribution
+        sentiment_counts = results_df["Sentiment"].value_counts()
+        st.subheader("Sentiment Distribution")
+        st.bar_chart(sentiment_counts)
+
+        # Generate actionable insights
+        total_reviews = len(results_df)
+        positive_reviews = sentiment_counts.get("POSITIVE", 0)
+        negative_reviews = sentiment_counts.get("NEGATIVE", 0)
+        neutral_reviews = sentiment_counts.get("NEUTRAL", 0)
+
+        st.subheader("Actionable Insights")
+        summary = (
+            f"Total reviews: {total_reviews}\n"
+            f"Positive reviews: {positive_reviews} ({(positive_reviews / total_reviews) * 100:.2f}%)\n"
+            f"Negative reviews: {negative_reviews} ({(negative_reviews / total_reviews) * 100:.2f}%)\n"
+            f"Neutral reviews: {neutral_reviews} ({(neutral_reviews / total_reviews) * 100:.2f}%)"
+        )
+        st.write(summary)
+
+        if positive_reviews > negative_reviews:
+            st.success("The overall sentiment is positive. Focus on maintaining and amplifying the positive experiences.")
+        elif negative_reviews > positive_reviews:
+            st.error("The overall sentiment is negative. Investigate the negative feedback to identify and address common issues.")
+        else:
+            st.info("The sentiment is mixed. Strive for improvements to increase positive feedback.")
+
+        # Generate detailed insights using generative AI
+        st.subheader("Detailed AI-Powered Insights")
+        with st.spinner("Generating insights..."):
+            detailed_insights = generate_detailed_insights(summary)
+        st.write(detailed_insights)
